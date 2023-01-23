@@ -9,10 +9,10 @@ train_path = "/media/dataanalyticlab/Drive2/MANSOOR/row_100.csv"
 val_path = "/media/dataanalyticlab/Drive2/MANSOOR/row_100.csv"
 sub_labels_path = "/media/dataanalyticlab/Drive2/MANSOOR/Dataset/OpenBHB/Subjects/All_subjects_metadata.csv"
 
-X_train = np.loadtxt(open(train_path), delimiter=",", usecols=np.arange(1,5000))
-X_val = np.loadtxt(open(val_path), delimiter=",", usecols=np.arange(1,5000))
+X_train = np.loadtxt(open(train_path), delimiter=",", usecols=np.arange(1,3659573))
+X_val = np.loadtxt(open(val_path), delimiter=",", usecols=np.arange(1,3659573))
 sub_labels = np.genfromtxt(open(sub_labels_path), delimiter=",", usecols=(0,1), skip_header=True, names=None, skip_footer=True)
-Y = sub_labels[:200,1]
+Y = sub_labels[:,1]
 
 
 X = np.concatenate((X_train, X_val))
