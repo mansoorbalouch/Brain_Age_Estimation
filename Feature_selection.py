@@ -3,6 +3,7 @@ from sklearn.feature_selection import mutual_info_classif, mutual_info_regressio
 from sklearn.metrics import normalized_mutual_info_score
 from math import *
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+import gc
 
 
 train_path = "/media/dataanalyticlab/Drive2/MANSOOR/row_100.csv"
@@ -21,6 +22,11 @@ scaler = MinMaxScaler()
 X_sc = scaler.fit_transform(X)
 
 print("Data matrix min-max scaled...")
+
+
+### Uncomment if you want to free the space by X
+# del X
+# gc.collect()
 
 
 # compute covariance between x and y
