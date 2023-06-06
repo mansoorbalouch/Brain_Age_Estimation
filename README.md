@@ -6,7 +6,7 @@ The 3D MRIs of different subjects (or same subject at different time-points in l
 ## Feature Extraction
 
 ## Feature Engineering and Feature Selection
-
+Proper feature selection has two main ways, filter, and wrapper feature selection. The criterion for filter feature selection is independent of the particular classification algorithm, generally, estimation of statistical properties are performed using them. The 6 most common criteria are the Kruskal-Wallis test, Chi-square score, multivariate minimal redundancy maximal relevance (MRMR), Fisher score, Gini score, and relief feature score.
 ## Exploratory Data Analysis
 
 ## Model training
