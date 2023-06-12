@@ -1,14 +1,11 @@
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import os
 import io
 import glob
 import math
 import sklearn
-import nilearn as nl
 from sklearn.manifold import TSNE
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVR
