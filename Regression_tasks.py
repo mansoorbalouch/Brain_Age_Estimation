@@ -243,4 +243,22 @@ def Add_reg_results():
     return evaluation_metrics
 
 
+def Tune_HyperParameters(X_train, X_test, Y_train, Y_test, algo):
+    test_mae_list = []
+    perc_within_eps_list = []
+
+    eps = 5
+    c_space = np.linspace(0.01, 10)
+
+    for c in c_space:
+        varied_svr = LinearSVR(epsilon=eps, C=c, fit_intercept=True, max_iter=10000)
+        
+        varied_svr.fit(X_train, Y_train)
+        
+        test_mae = mean_absolute_error(Y_test, varied_svr.predict(X_test))
+        test_mae_list.append(test_mae)
+        
+        perc_within_eps = 100*np.sum(abs(Y_test-varied_svr.predict(X_test)) <= eps) / len(Y_test)
+        perc_within_eps_list.append(perc_within_eps)
+
 
