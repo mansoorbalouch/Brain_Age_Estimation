@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 import io
 import glob
@@ -24,6 +25,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.kernel_approximation import RBFSampler
 from sklearn import random_projection
 from sklearn.random_projection import johnson_lindenstrauss_min_dim
+from sklearn.manifold import TSNE
 
 
 def Apply_Lin_Transform(X, technique, components, dir): 
@@ -69,16 +71,23 @@ def Apply_Lin_Transform(X, technique, components, dir):
         X_JL_transformed.to_csv(dir+ "_JL_transformed_" + components + "_comp.csv")
         print("Reduced matrix file saved")
         return X_JL_transformed
+    
         
-def Apply_NonLin_Transform(X, technique):
+def Apply_NonLin_Transform(X, technique, groups):
     if (technique=="Kernel_PCA"):
         print("Kernel PCA performed")
+        
     if (technique=="MDS"):
         # Matrix of Euclidean distances is converted into a centered Gram matrix, 
         # which can be directly used to perform PCA via eigendecomposition 
 
         print("Computing the Eucledian matrix!!")
         Comp_Dist_Mat(X)
+
+    if (technique=="tSNE"):
+        findTSNEcomp(X,groups)
+        PlotTSNE()
+        
 
 
 
@@ -91,7 +100,7 @@ This function does the following task:
 -> Computes the Eucledian and Cosine distance matrices of each block 
 -> Returns the square distance matrices, each of the order m * m
 """
-def Comp_Dist_Mat(X, no_of_blocks, rows, skip_rows, chunks, dir):
+def Comp_Dist_Mat(X,file_name, no_of_blocks, rows, skip_rows, chunks, dir):
     m = len(X.rows)
     n = len(X.columns)
     # no_of_blocks = 13
@@ -162,10 +171,8 @@ def cosine_dist_compute(x, y, chunks):
                           axis=1)
     
 
-
-
 """
-############## Find EVD of the covariance matrix  ##################### 
+############## Perform EVD using the covariance matrix  ##################### 
 """
 def Perform_EVD(X, chunks):
     cov_mat = cov_mat_compute(X.transpose(), X, chunks=chunks)
@@ -205,3 +212,24 @@ def cov_mat_compute(X_t, X, chunks):
     values = [delayed(np.cov)(X_t, X)]
     return np.concatenate(compute(*values, scheduler='threads'),
                           axis=1)
+
+
+"""
+Computes the tSNE components for a given data matrix and the group or class they belong to
+"""
+def findTSNEcomp(features, group, perplexity, k):
+    tsne = TSNE(n_components=2, perplexity=perplexity)
+    tsne = tsne.fit_transform(features)
+    tsne_feat = pd.DataFrame()
+    tsne_feat["Group"] = group
+    tsne_feat["comp-1"] = tsne[:,0]
+    tsne_feat["comp-2"] = tsne[:,1]
+    return tsne_feat
+
+def PlotTSNE(tsne, k):
+    tsne_sort = tsne.sort_values(by="Age")
+    fig = plt.figure()
+    sns.scatterplot(x="comp-1", y="comp-2", hue=tsne_sort.loc[:, "age-cluster"],
+     color=["r", "g", "b", "y"], palette=sns.color_palette("hls", k), 
+                data=tsne_sort.loc[:, ["comp-1", "comp-2"]])
+    return fig
