@@ -72,20 +72,22 @@ def comp_entropy(values):
 """
 This function does the following task:
 ===============================================================
--> Takes a data matrix of size m * n where m rows represents the samples and n columns represent the features
+-> Takes a data matrix of size m * n where m rows represents the samples or points and 
+    n columns represent the features or dimensions
 -> Divides the data matrix into blocks or chunks and loads each block row wise
--> Computes the Eucledian and Cosine Distance and Covariance matrices of each block 
+-> Computes the Eucledian and Cosine distance matrices of each block 
+-> Returns the square distance matrices, each of the order m * m
 """
-def Comp_Dist_Cov_Mat(X, no_of_blocks, rows, skip_rows, chunks):
+def Comp_Dist_Mat(X, no_of_blocks, rows, skip_rows, chunks, dir):
+    m = len(X.rows)
     n = len(X.columns)
     # no_of_blocks = 13
     # rows = 250
     # skip_rows = 0
     # chunks = 10
 
-    Euc_dist_mat = np.zeros((n,n))
-    Cos_dist_mat = np.zeros((n,n))
-    Cov_mat = np.zeros((n,n))
+    Euc_dist_mat = np.zeros((m,m))
+    Cos_dist_mat = np.zeros((m,m))
 
     for i in range(6,no_of_blocks):
         rows = 250
@@ -98,12 +100,10 @@ def Comp_Dist_Cov_Mat(X, no_of_blocks, rows, skip_rows, chunks):
             upper_limit = 209
         file = open(file_name)
         # load the ith diagonal data block
-        data_mat_block_i = np.loadtxt(file ,delimiter = ",", usecols=np.arange(1,3659573), max_rows=rows, skiprows=skip_rows)
+        data_mat_block_i = np.loadtxt(file ,delimiter = ",", usecols=np.arange(1,n), max_rows=rows, skiprows=skip_rows)
         # compute and store the distances and covariance blocks at the diagonals
         Euc_dist_mat[low_limit:low_limit+rows, skip_rows:rows+skip_rows]= Euc_dist_mat(data_mat_block_i, data_mat_block_i, chunks)
         Cos_dist_mat[low_limit:low_limit+rows, skip_rows:rows+skip_rows]= Cos_dist_mat(data_mat_block_i, data_mat_block_i, chunks)
-    
-        Cov_mat[low_limit:low_limit+rows, skip_rows:rows+skip_rows] = np.cov(data_mat_block_i)
         file.close()
 
         for j in range(i+1,no_of_blocks): # loop till all upper triangular blocks are computed
@@ -122,10 +122,7 @@ def Comp_Dist_Cov_Mat(X, no_of_blocks, rows, skip_rows, chunks):
             # compute and store the distances and covariance blocks in the upper triangle
             Euc_dist_mat[low_limit:low_limit+upper_limit, skip_rows:rows+skip_rows]= Euc_dist_mat(data_mat_block_i, data_mat_block_j, chunks)
             Cos_dist_mat[low_limit:low_limit+upper_limit, skip_rows:rows+skip_rows]= Cos_dist_mat(data_mat_block_i, data_mat_block_j, chunks)
-            cov_mat_ij= np.cov(data_mat_block_i, data_mat_block_j)
-            Cov_mat[low_limit:low_limit+upper_limit, skip_rows:rows+skip_rows] = cov_mat_ij[0:upper_limit, upper_limit:rows+upper_limit]
             
-    np.savetxt("/media/dataanalyticlab/Drive2/MANSOOR/Dataset/Dist_Cov_Matrices_OpenBHB/Euclidean_Dist_Mat_OpenBHB.csv", Euc_dist_mat, delimiter=",")
-    np.savetxt("/media/dataanalyticlab/Drive2/MANSOOR/Dataset/Dist_Cov_Matrices_OpenBHB/Cosine_Dist_Mat_OpenBHB.csv", Cos_dist_mat, delimiter=",")
-    np.savetxt("/media/dataanalyticlab/Drive2/MANSOOR/Dataset/Dist_Cov_Matrices_OpenBHB/Covariance_Mat_OpenBHB.csv", Cov_mat, delimiter=",")     
+        np.savetxt(dir+ "Euclidean_Dist_Mat_"+m+"x"+m+".csv", Euc_dist_mat, delimiter=",")
+        np.savetxt(dir+ "Cosine_Dist_Mat_"+m+"x"+m+".csv", Cos_dist_mat, delimiter=",")
     
