@@ -106,3 +106,65 @@ def Perform_CAT12_QC(dataMatrix, data_dir, dataset, IQR_criteria):
     np.save(data_dir+ QC_dir+"Prep_CAT12_Vol_"+dataset+"_QC_"+str(size[0])+"x"+str(size[1]-2)+".npy", np_CAT12_QC  )
     X_CAT12_QC.to_csv(data_dir+ QC_dir+"Prep_CAT12_Vol_"+dataset+"_QC_"+str(size[0])+"x"+str(size[1]-2)+".csv")
     return X_CAT12_QC
+
+
+"""
+Input: this function takes an IXI data or feature matrix and the metadata table 
+-> Both tables must have original (raw) IDs at the zeroth index
+Output: returns the data table with appended age and gender (if any) labels or information 
+"""
+def Get_IXI_Labels(IXI_Data_Matrix, IXI_Metadata):
+    # extract the subject IDs from the metadata table
+    IXI_Metadata = Extract_IDs(IXI_Metadata)
+
+    # extract the subject IDs from the data matrix
+    IXI_Data_Matrix = Extract_IDs(IXI_Data_Matrix)
+
+    # rename the column names in both tables based on index 
+    IXI_Metadata = IXI_Metadata.rename(columns={IXI_Metadata.columns[-1]: "ID"})
+    IXI_Data_Matrix = IXI_Data_Matrix.rename(columns={IXI_Data_Matrix.columns[-1]: "ID"})
+
+    # join the two tables based having same IDs
+    IXI_Data_Matrix = IXI_Data_Matrix.merge(IXI_Metadata, how="inner", left_on="ID", right_on="ID" )
+
+
+##### this function takes an IXI table (metadata or data matrix)   ######
+##### and adds a new column with the updated ids    ###### 
+def Extract_IDs(X):
+    ids_new = []
+    ids_old = X.iloc[:,0]
+    for i in range(0,len(ids_old)):
+        id_i = re.search(r'IXI(.*?)-', ids_old[i])
+        id_i =  int(id_i.groups(1)[0])
+        ids_new.append(id_i)
+    return X.append(ids_new)
+
+"""
+Input: this function takes an BraTS data or feature matrix and the metadata table 
+-> Both tables must have original IDs at the zeroth index
+Output: returns the data table with appended age and gender (if any) labels or information 
+"""
+def Get_BraTS_Labels(BraTS_Data_Matrix, BraTS_Metadata):
+    # updates the metadata IDs 
+    for i in range(0,len(BraTS_Metadata)):
+        BraTS_Metadata.iloc[i,0] = str(BraTS_Metadata.iloc[i,0] + "_t1")
+    
+    merged = BraTS_Data_Matrix.merge(BraTS_Metadata, left_on="names", right_on="Brats20ID", how="inner", suffixes=("_tableA", "_tableB"))
+    return merged.drop(columns=["Brats20ID", "Survival_days", "Extent_of_Resection"])
+
+"""
+Input: this function takes an ICBM data table and the metadata table 
+-> Both tables must have original (raw) IDs at the zeroth index
+Output: returns the data table with appended age and gender (if any) labels or information 
+"""
+def Get_ICBM_Labels(ICBM_Data_Matrix, ICBM_Metadata):
+    # updates the data table IDs 
+    dataMatrixIDs = ICBM_Data_Matrix.loc[:,"names"]
+    for i in range(0,len(dataMatrixIDs)):
+        id_i = re.search(r'ICBM_(.*?)_MR', dataMatrixIDs[i])
+        if id_i is not None:   
+            id_i =  id_i.groups(1)[0]
+            ICBM_Data_Matrix.loc[i,"names"] = id_i
+
+    merged = ICBM_Data_Matrix.merge(ICBM_Metadata, left_on="names", right_on="Subject_ID", how="inner")
+    return merged.drop(columns=["Subject_ID", "Image_ID", "Description"])
