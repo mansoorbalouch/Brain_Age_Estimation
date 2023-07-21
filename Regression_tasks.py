@@ -12,11 +12,12 @@ from sklearn.svm import SVR
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn import linear_model
-from sklearn.metrics import mean_absolute_error, mean_squared_error 
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.svm import LinearSVR
 from sklearn_rvm import EMRVR
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import GridSearchCV
+from sklearn.neural_network import MLPRegressor
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.model_selection import GridSearchCV, cross_val_score, StratifiedKFold, StratifiedShuffleSplit, KFold
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array, check_is_fitted
 import timeit
@@ -26,13 +27,7 @@ warnings.filterwarnings('ignore')
 
 
 
-dataset = []
-Model = []
-MAE = []
-MSE = []
-RMSE = []
-R_sq = []
-run_time = []
+dataset, Model, MAE, MSE , RMSE , R_sq , run_time, Set_type = ([] for i in range(8))
 
 print("Package import done")
 
@@ -47,23 +42,15 @@ def LR(X_train, Y_train, X_test, Y_test, Feat):
     # print("Intercept: {:,.3f}".format(lm.intercept_))
     # print("Coefficient: {:,.3f}".format(lm.coef_[1]))
 
-    dataset.append(Feat)
-    Model.append("Linear Regression")
+    algo = "LR"
     Y_pred = lm.predict(X_test)
+    
     stop = timeit.default_timer()
     time_new = stop - start
 
-    MAE.append(round(mean_absolute_error(Y_test, Y_pred), 2))
-
-    mse = round(mean_squared_error(Y_test, Y_pred), 2)
-    MSE.append(mse)
-    RMSE.append(round(math.sqrt(mse),2))
-    R_2 = round(sklearn.metrics.r2_score(Y_test, Y_pred),2)
-    R_sq.append(R_2)
-    run_time.append(time_new)
-    results= Add_reg_results()
+    results = Add_reg_results(Y_pred, Y_test, Feat, algo, time_new, "Test")
     print("LR finished running")
-    return Y_pred, results
+    return Y_pred, results, lm
 
 
 ################## Linear SVR  ###########################################
@@ -71,27 +58,18 @@ def LSVR(X_train, Y_train, X_test, Y_test, Feat):
     print("SVR started running")
     start = timeit.default_timer()
     eps = 5
-    svr = LinearSVR(epsilon=eps, C=0.14, fit_intercept=True)
+    svr = LinearSVR(epsilon=eps, C=5, fit_intercept=True)
     svr.fit(X_train, Y_train)
 
-    # storing the results
-    dataset.append(Feat)
-    Model.append("Linear Support Vector Regression")
+    algo = "LSVR"
     Y_pred = svr.predict(X_test)
+
     stop = timeit.default_timer()
     time_new = stop - start
 
-    MAE.append(round(mean_absolute_error(Y_test, Y_pred), 2))
-
-    mse = round(mean_squared_error(Y_test, Y_pred), 2)
-    MSE.append(mse)
-    RMSE.append(round(math.sqrt(mse),2))
-    R_2 = round(sklearn.metrics.r2_score(Y_test, Y_pred),2)
-    R_sq.append(R_2)
-    run_time.append(time_new)
-    results = Add_reg_results()
+    results = Add_reg_results(Y_pred, Y_test, Feat, algo, time_new, "Test")
     print("SVR finished running")
-    return Y_pred, results
+    return Y_pred, results, svr
 
 
 ################## Relevance Vector Regression  ############################
@@ -103,23 +81,15 @@ def RVR(X_train, Y_train, X_test, Y_test, Feat):
         ("rvr", EMRVR(kernel="poly"))
     ]).fit(X_train, Y_train)
 
-    dataset.append(Feat)
-    Model.append("Relevance Vector Regression")
+    algo = "RVR"
     Y_pred = pipe.predict(X_test)
+
     stop = timeit.default_timer()
     time_new = stop - start
 
-    MAE.append(round(mean_absolute_error(Y_test, Y_pred), 2))
-
-    mse = round(mean_squared_error(Y_test, Y_pred), 2)
-    MSE.append(mse)
-    RMSE.append(round(math.sqrt(mse),2))
-    R_2 = round(sklearn.metrics.r2_score(Y_test, Y_pred),2)
-    R_sq.append(R_2)
-    run_time.append(time_new)
-    results = Add_reg_results()
+    results = Add_reg_results(Y_pred, Y_test, Feat, algo, time_new, "Test")
     print("RVR finished running")
-    return Y_pred, results
+    return Y_pred, results, pipe
 
 
 ################ Generalized Linear Model ################################
@@ -131,23 +101,16 @@ def GLM_Gamma(X_train, Y_train, X_test, Y_test, Feat):
     start = timeit.default_timer()
     glm_gamma = linear_model.GammaRegressor(alpha=8)
     glm_gamma.fit(X_train, Y_train)
-    dataset.append(Feat)
-    Model.append("Generalized Linear Model (Gamma)")
+
+    algo = "GLM_Gamma"
     Y_pred = glm_gamma.predict(X_test)
+
     stop = timeit.default_timer()
     time_new = stop - start
-    mae = round(mean_absolute_error(Y_test, Y_pred), 2)
-    MAE.append(round(mean_absolute_error(Y_test, Y_pred), 2))
 
-    mse = round(mean_squared_error(Y_test, Y_pred), 2)
-    MSE.append(mse)
-    RMSE.append(round(math.sqrt(mse),2))
-    R_2 = round(sklearn.metrics.r2_score(Y_test, Y_pred),2)
-    R_sq.append(R_2)
-    run_time.append(time_new)
-    # results = Add_reg_results()
+    results = Add_reg_results(Y_pred, Y_test, Feat, algo, time_new, "Test")
     print("GLM_Gamma finished running")
-    return Y_pred
+    return Y_pred, results, glm_gamma
 
 
 #********* Tweedie Regressor (Normal Distribution) ********#
@@ -158,24 +121,49 @@ def GLM_normal(X_train, Y_train, X_test, Y_test, Feat):
 
     glm = linear_model.TweedieRegressor()
     glm.fit(X_train, Y_train)
-    dataset.append(Feat)
-    Model.append("Generalized Linear Model (Normal)")
+    algo = "GLM_Normal"
     Y_pred = glm.predict(X_test)
     stop = timeit.default_timer()
     time_new = stop - start
 
-    MAE.append(round(mean_absolute_error(Y_test, Y_pred), 2))
-
-    mse = round(mean_squared_error(Y_test, Y_pred), 2)
-    MSE.append(mse)
-    RMSE.append(round(math.sqrt(mse),2))
-    R_2 = round(sklearn.metrics.r2_score(Y_test, Y_pred),2)
-    R_sq.append(R_2)
-    run_time.append(time_new)
-    results = Add_reg_results()
+    results = Add_reg_results(Y_pred, Y_test, Feat, algo, time_new, "Test")
     print("GLM_Normal finished running")
-    return Y_pred, results
+    return Y_pred, results, glm
 
+
+"""*************** Multi-Layer Perceptron (Regression) ******************
+-> select the parameters using grid search 
+"""
+def MLP_Reg(X_train, Y_train, X_test, Y_test, Feat):
+    print("MLP started running")
+    start = timeit.default_timer()
+    regr = MLPRegressor(random_state=1)
+
+    parameters_MLP_reg = {
+        'hidden_layer_sizes': [(150,100,50), (120,80,40), (100,50,30)],
+        'activation': ('identity',  'tanh', 'adam'),
+        'alpha': (0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
+        'beta_1': (0.1,0.9,0.1),
+        'beta_2': (0.1,0.9,0.1),
+        'learning_rate': ['constant','adaptive']
+                    }
+    # with GridSearch
+    grid_search_MLP_reg = GridSearchCV(
+        estimator=regr,
+        param_grid=parameters_MLP_reg,
+        n_jobs = -1,
+        cv = 5
+    )
+    algo="MLP"
+
+    mlp = grid_search_MLP_reg.fit(X_train, Y_train)
+    Y_pred = mlp.predict(X_test)
+    stop = timeit.default_timer()
+    time_new = stop - start
+
+    results = Add_reg_results(Y_pred, Y_test, Feat, algo, time_new, "Test")
+    print("MLP finished running")
+    return Y_pred, results, mlp
 
 
 #******* Check for missing values in case of RVR *******#
@@ -228,17 +216,118 @@ class NanImputeScaler(BaseEstimator, TransformerMixin):
         return X
 
 
-def Add_reg_results():
-    dataset_s = pd.Series(dataset)
-    Model_s = pd.Series(Model)
-    MAE_s = pd.Series(MAE)
-    RMSE_s = pd.Series(RMSE)
-    R_sq_s = pd.Series(R_sq)
-    MSE_s = pd.Series(MSE)
-    time_s = pd.Series(run_time)
-    evaluation_metrics = pd.DataFrame({"Dataset": dataset_s, "Model": Model_s, "RMSE": RMSE_s, "MSE": MSE_s, "MAE": MAE_s,  "R_sq": R_sq_s, "Time":time_s})
+def Add_reg_results(Y_pred, Y_test, data, algo, time_new, set_type):
+    dataset.append(data)
+    Model.append(algo)
+    MAE.append(round(mean_absolute_error(Y_test, Y_pred), 2))
+    mse = round(mean_squared_error(Y_test, Y_pred), 2)
+    MSE.append(mse)
+    RMSE.append(round(math.sqrt(mse),2))
+    R_2 = round(r2_score(Y_test, Y_pred),2)
+    R_sq.append(R_2)
+    run_time.append(time_new)
+    Set_type.append(set_type)
+    
+
+    evaluation_metrics = pd.DataFrame({"Dataset": pd.Series(dataset), "Model": pd.Series(Model), "MAE": pd.Series(MAE), "RMSE": pd.Series(RMSE), "MSE": pd.Series(MSE),  
+                                        "R_sq": pd.Series(R_sq), "Time":pd.Series(run_time), "Set":pd.Series(Set_type)})
     return evaluation_metrics
 
+
+"""
+This function performs the following function:
+Input: takes the training set and splits required (should evenly divide the dataset)
+-> performs k-fold cross validation, trains the ML algorithm, and computes the errors
+Output: 
+"""
+def kFold_Cross_Val(X_train, Y_train, algo, sampling, data, k_splits):
+
+    MAE_cv , MSE_cv , RMSE_cv , R_sq_cv = ([] for i in range(4))   
+
+    # create an instance of the estimator or a pipeline containing the fit and predict methods
+    pipeline = Build_Pipeline(algo)
+
+    # create an object of the sampling strategy
+    if (sampling=="Random"):
+        ## KFold splits the training data into k consecutive subsets randomly
+        kFold = KFold(n_splits=k_splits, shuffle=True)
+        kfold = kFold.split(X_train, Y_train )
+    elif (sampling=="Stratified"):
+        ## Stratified KFold splits the training data into k subsets with uniform distribution 
+        ## of the target class or group such as same no. of male and female in each subset
+ 
+        kfold = get_k_age_range_stratified_partitions(k_splits,X_train, Y_train, True, 0.2, 10)
+    
+    for k, (train, test) in enumerate(kfold):
+        # train and test represent the row indices of the train and validation subset 
+        start = timeit.default_timer()
+
+        pipeline.fit(X_train.iloc[train, :], Y_train.iloc[train])
+        Y_pred = pipeline.predict(X_train.iloc[test, :])
+
+        stop = timeit.default_timer()
+        time_new = stop - start
+
+        mae = mean_absolute_error(Y_pred, Y_train.iloc[test])
+        mse = mean_squared_error(Y_pred, Y_train.iloc[test])
+        rmse = round(math.sqrt(mse),2)
+        r_2 = r2_score(Y_pred, Y_train.iloc[test])
+        MAE_cv.append(mae)
+        MSE_cv.append(mse)
+        RMSE_cv.append(rmse)
+        R_sq_cv.append(r_2)
+    MAE.append(str(round(np.mean(MAE_cv),2)) +" ± " + str(round(np.std(MAE_cv),2)))
+    MSE.append(str(round(np.mean(MSE_cv),2)) +" ± " + str(round(np.std(MSE_cv),2)))
+    RMSE.append(str(round(np.mean(RMSE_cv),2)) +" ± " + str(round(np.std(RMSE_cv),2)))
+    R_sq.append(str(round(np.mean(R_sq_cv),2)) +" ± " + str(round(np.std(R_sq_cv))))
+    dataset.append(data)
+    Model.append(algo)
+    run_time.append(time_new)
+    Set_type.append("Train")
+    results = pd.DataFrame({"Dataset": pd.Series(dataset), "Model": pd.Series(Model), "MAE": pd.Series(MAE), "RMSE": pd.Series(RMSE), "MSE": pd.Series(MSE),  
+                                        "R_sq": pd.Series(R_sq), "Time":pd.Series(run_time), "Set":pd.Series(Set_type)})
+    return Y_pred, results
+    
+
+def Build_Pipeline(algo):
+    if (algo=="LR"):
+        pipeline = make_pipeline(StandardScaler(), LinearRegression())
+    elif (algo=="LSVR"):
+        pipeline = make_pipeline(StandardScaler(), LinearSVR(epsilon=5, C=20, fit_intercept=True))
+    elif (algo=="GLM_Normal"):
+        pipeline = make_pipeline(StandardScaler(), linear_model.TweedieRegressor())
+    elif (algo=="GLM_Gamma"):
+        pipeline = make_pipeline(StandardScaler(), linear_model.GammaRegressor(alpha=8))
+    elif (algo=="RVR"):
+        pipeline = Pipeline([("scale", NanImputeScaler()),("rvr", EMRVR(kernel="poly"))])
+    return pipeline
+
+
+def get_k_age_range_stratified_partitions(k, X, y, shuffle_data, test_size, num_bins=8):
+    k_partitions = []
+    """
+    Divide ages into equal size bins and labels them
+    """
+    y = np.array(y)
+    y_age_range = pd.qcut(y.reshape(y.shape[0]), num_bins, labels=False)
+
+    if k == 1:
+        shufflesplit = StratifiedShuffleSplit(n_splits=1, random_state=42, test_size=test_size)
+        indx_split = list(shufflesplit.split(X, y_age_range))[0]
+        k_partitions.append([indx_split[0], indx_split[1]])
+    else:
+        kfold = StratifiedKFold(n_splits=k, shuffle=shuffle_data, random_state=42)
+        for tr_indx, tt_indx in kfold.split(X, y_age_range):
+            shufflesplit = StratifiedShuffleSplit(n_splits=1, random_state=42, test_size=test_size)
+            indx_split = list(shufflesplit.split(X[tt_indx], y_age_range[tt_indx]))[0]
+            train_index = tt_indx[indx_split[0]]
+            test_index = tt_indx[indx_split[1]]
+
+            k_partitions.append([train_index, test_index])
+
+    return k_partitions
+    
+  
 
 def Tune_HyperParameters(X_train, X_test, Y_train, Y_test, algo):
     test_mae_list = []
@@ -257,5 +346,4 @@ def Tune_HyperParameters(X_train, X_test, Y_train, Y_test, algo):
         
         perc_within_eps = 100*np.sum(abs(Y_test-varied_svr.predict(X_test)) <= eps) / len(Y_test)
         perc_within_eps_list.append(perc_within_eps)
-
 

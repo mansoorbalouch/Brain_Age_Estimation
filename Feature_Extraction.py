@@ -37,8 +37,8 @@ def Apply_Lin_Transform(X, technique, components, dir):
         X_reduced = rbf.transform(X)
         X_reduced = pd.DataFrame(X_reduced)
         print("Matrix transformed using RFF")
-        X_reduced.to_csv(dir+ "_reduced_kernel_trick_" + components + "_comp.csv")
-        X_reduced.to_numpy(dir+ "_reduced_kernel_trick_" + components + "_comp.npy")
+        pd.DataFrame(X_reduced).to_csv(dir+ "_reduced_kernel_trick_" + str(components) + "_comp.csv")
+        X_reduced.to_numpy(dir+ "_reduced_kernel_trick_" + str(components) + "_comp.npy")
         print("Reduced matrix file saved")
         return X_reduced
 
@@ -52,8 +52,8 @@ def Apply_Lin_Transform(X, technique, components, dir):
         pca = PCA(n_components=components)
         X_pca_features = pca.fit_transform(X_scaled)
         print("Matrix transformed using PCA")
-        X_pca_features.to_csv(dir+ "_PCA_" + components + "_comp.csv")
-        np.save(dir+ "_PCA_" + components + "_comp.npy", X_pca_features)
+        # pd.DataFrame(X_pca_features).to_csv(dir+ "_PCA_" + str(components) + "_comp.csv")
+        # np.save(dir+ "_PCA_" + str(components) + "_comp.npy", X_pca_features)
         print("Reduced matrix file saved")
         return X_pca_features
 
@@ -67,8 +67,8 @@ def Apply_Lin_Transform(X, technique, components, dir):
         transformer = random_projection.GaussianRandomProjection(n_components=min_dim)
         X_JL_transformed = transformer.fit_transform(X)
         print("Data transformed using JL transform, now saving reduced data!!!")
-        np.save(dir+ "_JL_transformed_" + components + "_comp.npy", X_JL_transformed)
-        X_JL_transformed.to_csv(dir+ "_JL_transformed_" + components + "_comp.csv")
+        np.save(dir+ "_JL_transformed_" + str(components) + "_comp.npy", X_JL_transformed)
+        pd.DataFrame(X_JL_transformed).to_csv(dir+ "_JL_transformed_" + str(components) + "_comp.csv")
         print("Reduced matrix file saved")
         return X_JL_transformed
     

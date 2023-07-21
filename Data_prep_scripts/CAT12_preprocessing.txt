@@ -1,0 +1,17 @@
+% using the following unix command for preprocessing MRIs (in NIFTI format) at a particular folder
+% the output files stored either in the CAT12 folder structure (mri, label, report, and surface) or in BIDS format
+% label contains both volume featues (catROI) and thickness features (catROIs)
+
+/media/dataanalyticlab/Drive2/MATLAB/spm12/toolbox/cat12/standalone/cat_standalone.sh -ns -e -m /media/dataanalyticlab/Drive2/MATLAB/R2021b/bin/matlab -b /media/dataanalyticlab/Drive2/MATLAB/spm12/toolbox/cat12/standalone/cat_standalone_segment.m /media/dataanalyticlab/Drive2/MANSOOR/Dataset/Test_SPM12/IXI041-Guys-0706-T1.nii.gz
+
+% using the following command to parallelize the preprocessing pipeline
+
+/media/dataanalyticlab/Drive2/MATLAB/spm12/toolbox/cat12/standalone/cat_parallelize.sh -p 8 -l /media/dataanalyticlab/Drive2/MANSOOR/Dataset/Test_SPM12/tmp -c "/media/dataanalyticlab/Drive2/MATLAB/spm12/toolbox/cat12/standalone/cat_standalone.sh -ns -e -m /media/dataanalyticlab/Drive2/MATLAB/R2021b/bin/matlab -b /media/dataanalyticlab/Drive2/MATLAB/spm12/toolbox/cat12/standalone/cat_standalone_segment.m" /media/dataanalyticlab/Drive2/MANSOOR/Dataset/Test_SPM12/Preprocessing_BraTS/*/*_t1.nii.gz
+
+
+% open CAT12 toolbox in matlab
+spm pet
+
+
+% get csv files for the roi xml features/files in the label directory
+ROI Tools -> Estimate mean/volume inside ROI

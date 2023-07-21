@@ -13,3 +13,16 @@ Proper feature selection has two main ways, filter, and wrapper feature selectio
 Firstly,the data is split into train-test set following ***80:20*** division. The training set is further the brain age estimation model is trained on t 
 
 ## Performance Evaluation and Results Visualization
+
+## Dependencies Installation
+- pandas
+- numpy
+- scikit-learn
+- matplotlib
+- nibabel
+- nilearn
+- nipype
+- keras
+- tensorflow
+- scikeras
+

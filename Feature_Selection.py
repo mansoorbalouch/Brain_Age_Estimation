@@ -13,7 +13,7 @@ Computes the feature selection metrics for given data matrix (feature matrix) an
 returns the mean, std, min, max, var, cov(x,y), corr(xy), entropy, MI and NMI
 """
 def Comp_Feat_Sel_Metrics(X, Y):
-    Index, mean_x, std_x, median, min_x, max_x, var_x, cov_xy, corr_xy, entropy_x, MI, NMI_score = []
+    Index, mean_x, std_x, median, min_x, max_x, var_x, cov_xy, corr_xy, entropy_x, MI, NMI_score = ([] for i in range(12))
     mu_y = np.mean(Y[:,])
     std_y = np.std(Y[:,])
     entropy_y = comp_entropy(Y[:,])
