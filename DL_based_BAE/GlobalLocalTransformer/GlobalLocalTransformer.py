@@ -76,7 +76,7 @@ class convBlock(nn.Module):
         super().__init__()
         
         # create a convolutional block with batch normalization and ReLU activation functions
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=False)
         self.conv1 = nn.Conv2d(inplace,outplace,kernel_size=kernel_size,padding=padding,bias=False)
         self.bn1 = nn.BatchNorm2d(outplace)
 
