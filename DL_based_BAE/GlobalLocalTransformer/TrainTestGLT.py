@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score,mean_absolute_error
 import numpy as np
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 import torch.optim as optim
 import warnings
 warnings.filterwarnings("ignore")
@@ -29,14 +29,13 @@ class Trainer:
         self.device = device
             
     # s_start = starting slice, s_end = ending slice
-    def dataLoaderGLT(self, source_path, s_start, s_end,  labels_path=""):
-        if (len(labels_path)>1):
-            X = np.load(labels_path + "VBM_OpenBHB.npy")
-        else:
-            X = np.load(source_path + "VBM_OpenBHB.npy")
-        Y = pd.read_csv(source_path + "SubInfoOpenBHB.csv")
+    def loadFullDataGLT(self, source_path, s_start, s_end,  labels_path=""):
+        X = np.load(source_path + "X_train_VBM_OpenBHB.npy")
+        Y = np.load(source_path + "Y_train_VBM_OpenBHB.npy")
         print("Data tensor loaded... shape: ", X.shape )
         labels = Y.loc[:,"age"]
+
+        # slice the 3D MRI volume and then reshape the tensor
         X_s = X[:,:,:,s_start:s_end,0]
 
         X_train, X_test, Y_train, Y_test = train_test_split(X_s, labels, test_size=0.2, random_state=42)
@@ -55,8 +54,37 @@ class Trainer:
         # print(Y_train.shape, Y_test.shape)
         return X_train, X_test,  Y_train, Y_test
   
+    def createDataLoaderGLT(self,src,num_train_samples, num_test_samples,batch_size=32,num_workers=4):
+        # Create memory-mapped arrays
+        X_train = np.memmap(src + 'X_train_VBM_OpenBHB.npy', dtype=float, mode='r', shape=(num_train_samples,121, 145, 121,1))
+        Y_train = np.memmap(src + 'Y_train_VBM_OpenBHB.npy', dtype=float, mode='r', shape=(num_train_samples,))
+        X_test = np.memmap(src + 'X_test_VBM_OpenBHB.npy', dtype=float, mode='r', shape=(num_test_samples,121, 145, 121,1))
+        Y_test = np.memmap(src + 'Y_test_VBM_OpenBHB.npy', dtype=float, mode='r', shape=(num_test_samples,))
 
-    def trainGLT(self, attention_model, regression_model, X_train, X_test, Y_train, Y_test,  criterion, optimizer, n_epochs, batch_size):
+        # Custom Dataset class using memory-mapped arrays
+        class myDataset(Dataset):
+            def __init__(self, X, y):
+                self.data = X
+                self.targets = y
+
+            def __len__(self):
+                return len(self.data)
+
+            def __getitem__(self, idx):
+                sample = self.data[idx]
+                target = self.targets[idx]
+                return sample, target
+
+        # Instantiate custom dataset
+        train_dataset = myDataset(X_train, Y_train)
+        test_dataset = myDataset(X_test, Y_test)
+
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+        return train_dataloader, test_dataloader
+
+
+    def trainGLT(self,  attention_model, regression_model,   criterion, optimizer, n_epochs, batch_size,X_train="", X_test="", Y_train="", Y_test="", data_loaded=True,src="",num_train_samples=0, num_test_samples =0, num_workers=8):
         self.attention_model = attention_model
         self.regression_model = regression_model
         self.X_train = X_train
@@ -69,9 +97,19 @@ class Trainer:
         self.batch_size = batch_size
         self.train_loss = [] 
         self.val_acc = []
-        self.train_dataloader = DataLoader(list(zip(X_train, Y_train)), batch_size=batch_size, shuffle=True)
-        self.test_dataloader = DataLoader(list(zip(X_test, Y_test)), batch_size=batch_size, shuffle=True)
-        
+        self.data_loaded = data_loaded
+
+        # check if data is already loaded in the memory, otherwise split it into batches
+        if (data_loaded):
+            self.train_dataloader = DataLoader(list(zip(X_train, Y_train)), batch_size=batch_size, shuffle=True)
+            self.test_dataloader = DataLoader(list(zip(X_test, Y_test)), batch_size=batch_size, shuffle=True)
+        else:
+            self.train_dataloader,self.test_dataloader = self.createDataLoaderGLT(src,
+                                                                                  num_train_samples,
+                                                                                  num_test_samples,
+                                                                                  batch_size,
+                                                                                  num_workers)
+        print("Created train-test data loaders...")
 
         # Loop through the number of epochs
         for self.epoch in range(n_epochs):
@@ -96,6 +134,9 @@ def trainEpoch(self):
 
     # Loop through the batches and update the gradients after each batch
     for X_batch, y_batch in self.train_dataloader:
+        if (self.data_loaded==False):
+            X_batch = X_batch[:,:,:,55:60,0]
+            X_batch = X_batch.permute(0,3,1,2)
         self.regression_model.train()
         zlist = self.attention_model(X_batch)             # forward pass
         output_tensors = torch.cat(zlist, dim=1)
@@ -126,6 +167,9 @@ def evaluateGLT(self):
     with torch.no_grad():
         # loop through each batch of the test set and compute the evaluation metrics
         for X_batch, y_batch in self.test_dataloader:
+            if (self.data_loaded==False):
+                X_batch = X_batch[:,:,:,55:60,0]
+                X_batch = X_batch.permute(0,3,1,2)
             total_samples = 0
             zlist = self.attention_model(X_batch)             # forward pass
             output_tensors = torch.cat(zlist, dim=1)
@@ -145,7 +189,7 @@ def evaluateGLT(self):
 
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     # Create the model, optimizer, loss function and trainer
     attention_model = GlobalLocalBrainAge(5, patch_size=32, step=32,
                         nblock=6, backbone='vgg8')
@@ -154,11 +198,26 @@ def main():
     regression_model = regression_model.double()
     criterion = nn.L1Loss()
     optimizer = optim.Adam(regression_model.parameters(), lr=0.0002)
-    src = "/media/dataanalyticlab/Drive2/MANSOOR/Dataset/Test/"
+    src = "/media/dataanalyticlab/Drive2/MANSOOR/Dataset/OpenBHB/VBM_OpenBHB/"
     trainer = Trainer(attention_model, optimizer, criterion, device=device)
-    X_train, X_test,  Y_train, Y_test = trainer.dataLoaderGLT(src, 55,60,src)
-    trainer.trainGLT(attention_model, regression_model,X_train, X_test,  
-                     Y_train, Y_test,criterion, optimizer, n_epochs=20, batch_size=2)
+
+    data_loaded = False
+    num_train_samples = 3172
+    num_test_samples = 794
+
+    if (data_loaded):
+        X_train, X_test,  Y_train, Y_test = trainer.loadFullDataGLT(src, 55,60,src)
+    else:
+        X_train, X_test,  Y_train, Y_test = ["" for i in range(4)]
+
+    # OpenBHB X_train = (3172,121,145,121,1), X_test = (794,121,145,121,1)
+    trainer.trainGLT(attention_model, regression_model,criterion,
+                      optimizer, n_epochs=20, 
+                     batch_size=50, X_train=X_train, X_test=X_test,  
+                     Y_train=Y_train, Y_test=Y_test, data_loaded=data_loaded,src=src,
+                     num_train_samples=num_train_samples, 
+                     num_test_samples=num_test_samples,
+                     num_workers=4)
 
 
 if __name__ == '__main__':
