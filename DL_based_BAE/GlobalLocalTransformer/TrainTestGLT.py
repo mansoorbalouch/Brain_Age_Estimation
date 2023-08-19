@@ -131,7 +131,7 @@ def trainEpoch(self):
     """
     Training loop -> train the model using the entire training set for one complete epoch 
     """   
-
+    print("Training epoch ",self.epoch," started.." )
     # Loop through the batches and update the gradients after each batch
     for X_batch, y_batch in self.train_dataloader:
         if (self.data_loaded==False):
@@ -162,7 +162,7 @@ def evaluateGLT(self):
     """
     Validation loop -> evaluate the model on the entire test set for one epoch
     """
-
+    print("Validation epoch ",self.epoch," started.." )
     self.regression_model.eval()  # Set the model to evaluation mode
     with torch.no_grad():
         # loop through each batch of the test set and compute the evaluation metrics
@@ -213,11 +213,11 @@ def main():
     # OpenBHB X_train = (3172,121,145,121,1), X_test = (794,121,145,121,1)
     trainer.trainGLT(attention_model, regression_model,criterion,
                       optimizer, n_epochs=20, 
-                     batch_size=50, X_train=X_train, X_test=X_test,  
+                     batch_size=32, X_train=X_train, X_test=X_test,  
                      Y_train=Y_train, Y_test=Y_test, data_loaded=data_loaded,src=src,
                      num_train_samples=num_train_samples, 
                      num_test_samples=num_test_samples,
-                     num_workers=4)
+                     num_workers=1)
 
 
 if __name__ == '__main__':
