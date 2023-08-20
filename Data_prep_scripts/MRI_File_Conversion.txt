@@ -1,3 +1,0 @@
-# Convert MNC to NII %
-mnc2nii <options> <infile.mnc> <outfile.mnc> 
-mnc2nii -help
